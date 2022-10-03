@@ -1,0 +1,4 @@
+coverage.txt
+**/debug.test
+build/*
+vault_temp/
