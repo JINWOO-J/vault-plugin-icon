@@ -296,7 +296,7 @@ func (b *backend) signAuth(ctx context.Context, req *logical.Request, data *fram
 		return nil, fmt.Errorf("invalid 'walletAddress' value=%s, len=%d", walletAddress, len(walletAddress))
 	}
 	if time == 0 {
-		return nil, fmt.Errorf("required invalid 'time' value : %d", time)
+		return nil, fmt.Errorf("invalid 'time' value=%d", time)
 	}
 	b.Logger().Info("Params", "walletAddress", walletAddress, "time", time)
 
@@ -310,6 +310,7 @@ func (b *backend) signAuth(ctx context.Context, req *logical.Request, data *fram
 	}
 
 	requestSignText := fmt.Sprintf("%s%d", walletAddress, time)
+	b.Logger().Info("Params", "requestSignText", requestSignText)
 	signature, err := SignFromPrivateKey(account.PrivateKey, []byte(requestSignText))
 
 	if err != nil {
@@ -318,9 +319,9 @@ func (b *backend) signAuth(ctx context.Context, req *logical.Request, data *fram
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"walletAddress": walletAddress,
-			"time":          time,
-			"signature":     signature,
+			"walletAddr": walletAddress,
+			"time":       time,
+			"signature":  signature,
 		},
 	}, nil
 

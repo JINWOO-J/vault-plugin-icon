@@ -22,12 +22,12 @@ services:
               disable_mlock = true
               plugin_directory= "/vault/plugin"
               api_addr = "http://127.0.0.1:8200"
-
-              storage "consul" {
-                 address = "20.20.5.137:8500",
-                 path = "vault",
-                 scheme = "http"
+              storage "raft" {
+                path    = "/vault/data"
+                node_id = "node1"
               }
+              
+
               listener "tcp" {
                 address     = "0.0.0.0:8200"
                 cluster_address = "0.0.0.0:8201"
@@ -36,13 +36,21 @@ services:
               #disable_sealwrap = true # for Enterprise version
               #max_lease_ttl = "720h"
               #default_lease_ttl = "168h"
-
+              #storage "consul" {
+              #   address = "20.20.5.137:8500",
+              #   path = "vault",
+              #   scheme = "http"
+              #}
         cap_add:
           - IPC_LOCK
-        network_mode: bridge
-        ports:
-            - "8200:8200"
-            - "8201:8201"
+        network_mode: host
+#        ports:
+#            - "8200:8200"
+#            - "8201:8201"
 
         volumes:
           - ./plugin:/vault/plugin
+          - ./data:/vault/data
+
+
+
