@@ -17,7 +17,6 @@ endif
 
 VAULT_BIN := vault_$(GO_OS)_$(ARCH)
 
-
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
     ECHO_OPTION = "-e"
@@ -124,8 +123,9 @@ clean:
 deps:
 		$(VGO) get
 
-docker_dev: build-linux-amd64 test
-	docker exec -e PLUGIN_NAME=$(PLUGIN_NAME) -it vault /script/enable_plugin_docker.sh
+docker_dev: build-linux-${ARCH} test
+	cd docker && docker-compose -f docker-compose-local.dev.yml up -d;
+	docker exec -e PLUGIN_NAME=$(PLUGIN_NAME) -it vault-dev /script/enable_plugin_docker.sh
 
 dev: setup_development_environment clean
 	cd $(DEVELOP_TMP_DIR);

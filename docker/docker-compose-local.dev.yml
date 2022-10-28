@@ -3,7 +3,7 @@ version: "3.8"
 services:
     vault:
         image: 'vault'
-        container_name: 'vault'
+        container_name: 'vault-dev'
         platform: "linux/amd64"
         init: true
         #exports work around vault bug https://github.com/hashicorp/vault/issues/3866
@@ -49,7 +49,7 @@ services:
         volumes:
           - ../build:/vault/plugin
           - ../script:/script
-#          - ./data:/vault/data
+          - ./data:/vault/data
 
 
 

@@ -56,3 +56,10 @@ Build and enable plugin
 make docker_dev
 ```
 
+
+Run the example script
+
+```
+examples/create_sign_wallet.sh
+
+```

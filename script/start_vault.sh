@@ -58,8 +58,6 @@ function cleanup {
 trap cleanup EXIT
 
 
-#vault plugin register -sha256=fd90e1aa8e604a5ba824a5068d600cf1638d74732f32ca5af3aecc951203506c secret iconsign
-
 SHASUM=$(shasum -a 256 "plugin/${PLUGIN_NAME}" | cut -d " " -f1)
 
 echo "    Registering plugin - ${SHASUM}"
