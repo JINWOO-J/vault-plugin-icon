@@ -4,7 +4,7 @@ services:
     vault:
         image: 'vault'
         init: true
-        container_name: 'vault'
+        container_name: 'vault-local'
         #exports work around vault bug https://github.com/hashicorp/vault/issues/3866
         #IP is the IP address of the default networking route
         #$$ escapes in "$" in docker-compose string interpolation

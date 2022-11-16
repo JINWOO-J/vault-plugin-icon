@@ -153,7 +153,7 @@ func TestAccounts(t *testing.T) {
 	}
 	pp.Print("signatureBytes", signatureBytes)
 	// delete key by name
-	pp.Print("Delete key by address: ", address1)
+	pp.Print("Delete key by address: ", address1, "\n\n")
 	req = logical.TestRequest(t, logical.DeleteOperation, "accounts/"+address1)
 	req.Storage = storage
 	if _, err := b.HandleRequest(context.Background(), req); err != nil {
@@ -170,7 +170,8 @@ func TestAccounts(t *testing.T) {
 	req = logical.TestRequest(t, logical.ReadOperation, "accounts/"+address1)
 	req.Storage = storage
 	address1Resp, err = b.HandleRequest(context.Background(), req)
-	assert.Equal(err.Error(), "[read] Account does not exist")
+	//assert.Equal(err.Error(), "[read] Account does not exist")
+	assert.Equal(err.Error(), fmt.Sprintf("[READ][FAIL] Account does not exist - %s", address1))
 
 	req = logical.TestRequest(t, logical.ListOperation, "accounts")
 	req.Storage = storage

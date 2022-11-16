@@ -27,7 +27,7 @@ func main() {
 		TLSProviderFunc:    tlsProviderFunc,
 	})
 	if err != nil {
-		log.Println("=== ERROR === ", err)
+		log.Println("=== ERROR ===", err)
 		os.Exit(1)
 	}
 }

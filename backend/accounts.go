@@ -108,13 +108,14 @@ func (b *backend) createAccount(ctx context.Context, req *logical.Request, data 
 
 func (b *backend) readAccount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	address := data.Get("name").(string)
-	b.Logger().Info("[read] Retrieving account for address", "address", address)
+	b.Logger().Info("[READ] Retrieving account for address", "address", address)
 	account, err := b.retrieveAccount(ctx, req, address)
 	if err != nil {
 		return nil, err
 	}
 	if account == nil {
-		return nil, fmt.Errorf("[read] Account does not exist")
+		return nil, fmt.Errorf("[READ][FAIL] Account does not exist - %s", address)
+		//return nil, nil
 	}
 
 	return &logical.Response{
@@ -151,16 +152,21 @@ func (b *backend) deleteAccount(ctx context.Context, req *logical.Request, data 
 	address := data.Get("name").(string)
 	account, err := b.retrieveAccount(ctx, req, address)
 	if err != nil {
-		b.Logger().Error("[delete] Failed to retrieve the account by address", "address", address, "error", err)
+		//b.Logger().Error("[DELETE][FAIL] Failed to retrieve the account by address", "address", address, "error", err)
 		return nil, err
 	}
 	if account == nil {
-		return nil, nil
+		errorMsg := fmt.Sprintf("%v was not found", address)
+		b.Logger().Error("[DELETE][FAIL]", errorMsg)
+		return nil, fmt.Errorf("[DELETE][FAIL] %s", errorMsg)
+
 	}
 	if err := req.Storage.Delete(ctx, fmt.Sprintf("accounts/%s", account.Address)); err != nil {
-		b.Logger().Error("[delete] Failed to delete the account from storage", "address", address, "error", err)
+		b.Logger().Error("[DELETE][FAIL] Failed to delete the account from storage", "address", address, "error", err)
 		return nil, err
 	}
+	//b.Logger().Info("[DELETE][OK]", fmt.Sprintf("%v(%v) deleted successfully", "address", account.Address, account.AliasName))
+	b.Logger().Info("[DELETE][OK] Deleted successfully", "address", account.Address, "name", account.AliasName)
 	return nil, nil
 }
 
@@ -169,7 +175,7 @@ func (b *backend) retrieveAccount(ctx context.Context, req *logical.Request, add
 	matched, err := regexp.MatchString("^(hx)?[0-9a-fA-F]{40}$", address)
 	if !matched || err != nil {
 		b.Logger().Error("Failed to retrieve the account, malformatted account address", "address", address, "error", err)
-		return nil, fmt.Errorf("Failed to retrieve the account, malformatted account address")
+		return nil, fmt.Errorf("failed to retrieve the account, malformatted account address")
 	} else {
 		if address[:2] != "hx" {
 			address = "hx" + address

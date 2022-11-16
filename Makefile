@@ -79,10 +79,6 @@ build:  build-$(GO_OS)-$(GO_ARCH)
 
 all-build: test build-darwin-arm64 build-darwin-amd64 build-linux-arm64 build-linux-amd64
 
-#build-linux:
-#	@$(call colorecho, "[BUILD]  ${@} ")
-#	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(VGO) build -o ${BINARY_NAME}_linux_amd64 -ldflags "-X main.buildDate=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` -X main.buildVersion=$(BUILD_VERSION)" -tags=prod -v
-#	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(VGO) build -o ${BINARY_NAME}_linux_arm64 -ldflags "-X main.buildDate=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` -X main.buildVersion=$(BUILD_VERSION)" -tags=prod -v
 build-%:
 # it's not work in linux, but osx works well
 #override os=$(call word-hyphen,$*,1)
