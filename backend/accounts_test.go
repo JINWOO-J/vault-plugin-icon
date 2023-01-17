@@ -367,7 +367,8 @@ func TestSignParamTransaction(t *testing.T) {
 	b, _ := getBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "accounts")
 	data := map[string]interface{}{
-		"privateKey": "82445cedfb35eb7390f35d71fe4b589bd102e70796dccebb5a2584cddca15c17",
+		//"privateKey": "82445cedfb35eb7390f35d71fe4b589bd102e70796dccebb5a2584cddca15c17",
+		"privateKey": "01399e416f938def824ed0785ec90133374ad0d7eb97bf82fa46d5163e951501",
 	}
 	req.Data = data
 	storage := req.Storage

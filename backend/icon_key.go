@@ -167,7 +167,7 @@ func ParsePublicKey(pubKey []byte) (*PublicKey, error) {
 }
 
 func ParsePrivateKeyFromString(privateKeyStr string) (*PrivateKey, error) {
-	privateKeyStr = strings.TrimLeft(privateKeyStr, "0x")
+	privateKeyStr = strings.Replace(privateKeyStr, "0x", "", -1)
 	privateKey, decodeErr := hex.DecodeString(privateKeyStr)
 	if decodeErr != nil {
 		return nil, fmt.Errorf("[ERROR] ParsePrivateKeyFromString decode_error %s", decodeErr)
