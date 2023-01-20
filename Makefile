@@ -66,7 +66,7 @@ SRC_GOFILES := $(shell find . -name '*.go' -print)
 
 word-hyphen = $(word $2,$(subst -, ,$1))
 
-all: build test
+all: build test shasum
 
 test: deps
 		$(VGO) test  ./... -cover -coverprofile=coverage.txt -covermode=atomic

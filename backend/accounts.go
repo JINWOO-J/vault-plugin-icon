@@ -35,14 +35,40 @@ func paths(b *backend) []*framework.Path {
 	}
 }
 
+
+func ListMapResponse(keys []map[string]interface{}) *logical.Response {
+	resp := &logical.Response{
+		Data: map[string]interface{}{},
+	}
+	if len(keys) != 0 {
+		resp.Data["keys"] = keys
+	}
+	return resp
+}
+
 func (b *backend) listAccounts(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+	detail := data.Get("detail").(bool)
 	vals, err := req.Storage.List(ctx, "accounts/")
 	if err != nil {
 		b.Logger().Error("Failed to retrieve the list of accounts", "error", err)
 		return nil, err
 	}
-	b.Logger().Info("Retrieve the list of accounts", "error", err)
-	return logical.ListResponse(vals), nil
+	if detail {
+		b.Logger().Info("Retrieve the list of accounts [detail]", "error", err)
+		var detailAddress []map[string]interface{}
+		for _, address := range vals{
+			account, _ := b.retrieveAccount(ctx, req, address)
+			_account := map[string]interface{}{
+				"address":    account.Address,
+				"alias_name": account.AliasName,
+			}
+			detailAddress = append(detailAddress, _account)
+		}
+		return ListMapResponse(detailAddress), nil
+	}else{
+		b.Logger().Info("Retrieve the list of accounts", "error", err)
+		return logical.ListResponse(vals), nil
+	}
 }
 
 func (b *backend) createAccount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {

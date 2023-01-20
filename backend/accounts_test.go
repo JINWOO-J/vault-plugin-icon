@@ -232,6 +232,74 @@ func TestCreateAccountsOK(t *testing.T) {
 	assert.Equal("hxbe1833529dae2328156cc834223cdc462e4d129d", address4)
 }
 
+
+func createAccountFunc(t *testing.T, b logical.Backend, storage logical.Storage, name string) (logical.Storage, error)  {
+
+	//b, _ := getBackend(t)
+
+	accountReq := logical.TestRequest(t, logical.UpdateOperation, "accounts")
+	data := map[string]interface{}{
+		"name": name,
+	}
+	accountReq.Data = data
+	accountReq.Storage = storage
+	//storage := accountReq.Storage
+	_, _ = b.HandleRequest(context.Background(), accountReq)
+	return storage, nil
+}
+
+func TestListAccountsOK_1(t *testing.T) {
+	assert := assert.New(t)
+	b, _ := getBackend(t)
+	req := logical.TestRequest(t, logical.ListOperation, "accounts")
+	sm := req.Storage
+	req.Storage = sm
+	maxWalletCount := 5
+	data := map[string]interface{}{
+		"detail": false,
+	}
+	req.Data = data
+
+	for i := 0; i < maxWalletCount; i++ {
+		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d" , i))
+		if err != nil {
+			return
+		}
+	}
+	res, err := b.HandleRequest(context.Background(), req)
+	if err != nil{
+		pp.Print(err)
+	}
+	pp.Print(res.Data["keys"])
+	assert.Equal(len(res.Data["keys"].([]string)), maxWalletCount )
+}
+
+func TestListAccountsDetailOK_1(t *testing.T) {
+	assert := assert.New(t)
+	b, _ := getBackend(t)
+	req := logical.TestRequest(t, logical.ListOperation, "accounts")
+	sm := req.Storage
+	req.Storage = sm
+	maxWalletCount := 5
+	data := map[string]interface{}{
+		"detail": true,
+	}
+	req.Data = data
+
+	for i := 0; i < maxWalletCount; i++ {
+		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d" , i))
+		if err != nil {
+			return
+		}
+	}
+	res, err := b.HandleRequest(context.Background(), req)
+	if err != nil{
+		pp.Print(err)
+	}
+	pp.Print(res.Data["keys"])
+	assert.Equal( len(res.Data["keys"].([]map[string]interface{})), maxWalletCount )
+}
+
 func TestListAccountsFailure1(t *testing.T) {
 	assert := assert.New(t)
 

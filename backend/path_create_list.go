@@ -49,6 +49,11 @@ func pathCreateAndList(b *backend) *framework.Path {
 				Description: "Alias ​​address of the wallet",
 				Default:     "",
 			},
+			"detail": &framework.FieldSchema{
+				Type:        framework.TypeBool,
+				Description: "Choose the detail options (true/false)",
+				Default:     true,
+			},
 		},
 	}
 }
