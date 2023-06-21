@@ -16,15 +16,23 @@ export PLUGIN_BIN_FILE=${PLUGIN_BIN_FILE:-"${PLUGIN_NAME}_${OS}_${ARCH}"}
 
 echo $PLUGIN_BIN_FILE
 
-export SHA3SUM=$(sha256sum "${PLUGIN_DIR}/${PLUGIN_BIN_FILE}" | cut -d " " -f1)
+echo "[enable_plugin_docker.sh]    Remove old plugins"
+$VAULT_BIN plugin deregister secret ${PLUGIN_NAME}
+echo ""
+echo ""
 
-echo "    Registering plugin - ${SHA3SUM}"
+export SHA3SUM=$(sha256sum "${PLUGIN_DIR}/${PLUGIN_BIN_FILE}" | cut -d " " -f1)
+echo "[enable_plugin_docker.sh]    Registering plugin - ${SHA3SUM}"
 $VAULT_BIN write sys/plugins/catalog/${PLUGIN_NAME} \
   sha_256="$SHA3SUM" \
   command="${PLUGIN_BIN_FILE}"
+echo ""
+echo ""
 
-echo "    Mounting plugin"
+echo "[enable_plugin_docker.sh]    Mounting plugin"
 $VAULT_BIN secrets enable -path=icon -description="ICON Wallet Signer" -plugin-name=${PLUGIN_NAME} plugin
+echo ""
+echo ""
 
-echo "    Reload plugin"
+echo "[enable_plugin_docker.sh]    Reload plugin"
 $VAULT_BIN write sys/plugins/reload/backend plugin=${PLUGIN_NAME}

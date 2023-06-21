@@ -12,21 +12,24 @@ else
     BUILD_PATH="."
 fi
 
-echo "      BUILD Vault plugin"
+echo "   >> BUILD Vault plugin"
 go  build -o ${PLUGIN_NAME} \
     -ldflags "-X main.buildDate=`date -u +\"%Y-%m-%dT%H:%M:%SZ\"` -X main.buildVersion=" \
     -tags=prod -v $BUILD_PATH || exit
 
 cd ${VAULT_DIR}
 
+echo "   >> Remove old plugins"
+$VAULT_BIN plugin deregister secret ${PLUGIN_NAME}
+
 SHASUM=$(shasum -a 256 "plugin/${PLUGIN_NAME}" | cut -d " " -f1)
-echo "    Registering plugin - ${SHASUM}"
+echo "   >> Registering plugin - ${SHASUM}"
 $VAULT_BIN write sys/plugins/catalog/${PLUGIN_NAME} \
   sha_256="$SHASUM" \
   command="iconsign"
 
 
-echo "    Mounting plugin"
+echo "   >> Mounting plugin"
 $VAULT_BIN secrets enable -path=icon -description="ICON Wallet" -plugin-name=iconsign plugin
 
 

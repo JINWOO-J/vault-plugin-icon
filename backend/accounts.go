@@ -35,7 +35,6 @@ func paths(b *backend) []*framework.Path {
 	}
 }
 
-
 func ListMapResponse(keys []map[string]interface{}) *logical.Response {
 	resp := &logical.Response{
 		Data: map[string]interface{}{},
@@ -53,22 +52,32 @@ func (b *backend) listAccounts(ctx context.Context, req *logical.Request, data *
 		b.Logger().Error("Failed to retrieve the list of accounts", "error", err)
 		return nil, err
 	}
-	if detail {
+	if detail == true {
+		keyInfo := map[string]interface{}{}
 		b.Logger().Info("Retrieve the list of accounts [detail]", "error", err)
-		var detailAddress []map[string]interface{}
-		for _, address := range vals{
+		//var detailAddress []map[string]interface{}
+		for _, address := range vals {
 			account, _ := b.retrieveAccount(ctx, req, address)
-			_account := map[string]interface{}{
-				"address":    account.Address,
-				"alias_name": account.AliasName,
+
+			if account.Address != "" {
+				//b.Logger().Info("[DETAIL] ", "address", account.Address, "alias_name", account.AliasName)
+				//_account := map[string]interface{}{
+				//	"address":    account.Address,
+				//	"alias_name": account.AliasName,
+				//}
+				//detailAddress = append(detailAddress, _account)
+				keyInfo[account.Address] = account.AliasName
 			}
-			detailAddress = append(detailAddress, _account)
+
 		}
-		return ListMapResponse(detailAddress), nil
-	}else{
-		b.Logger().Info("Retrieve the list of accounts", "error", err)
+		//b.Logger().Info("[DETAIL] ", "ListMapResponse(detailAddress)", ListMapResponse(detailAddress))
+		//return ListMapResponse(detailAddress), nil
+		return logical.ListResponseWithInfo(vals, keyInfo), nil
+	} else {
+		b.Logger().Info("[SIMPLE] Retrieve the list of accounts", "error", err, "detail", detail)
 		return logical.ListResponse(vals), nil
 	}
+
 }
 
 func (b *backend) createAccount(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
@@ -223,17 +232,42 @@ func (b *backend) retrieveAccount(ctx context.Context, req *logical.Request, add
 }
 
 func (b *backend) signTx(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
-
 	b.Logger().Info("Start signTx")
 	var txHash []byte
+
 	serializeText := data.Get("serialize").(string)
 	params := data.Get("params").(map[string]interface{})
 	params["from"] = data.Get("name")
 	data.Raw["params"] = params
 	from := data.Get("name").(string)
 	delete(data.Raw, "name")
-	pp.Print(data.Raw)
-	dataInput := data.Get("data").(string)
+	toAddr, _ := params["to"].(string)
+
+	if IsValidIconAddress(from) == false {
+		return nil, fmt.Errorf("Invalid 'address' value=%s, len=%d", from, len(from))
+	}
+	if IsValidIconAddress(toAddr) == false {
+		return nil, fmt.Errorf("Invalid 'to address' value=%s, len=%d", toAddr, len(toAddr))
+	}
+	stepLimit, _ := params["stepLimit"].(string)
+	if stepLimit == "" || IsValidHexString(stepLimit) == false {
+		b.Logger().Error("Invalid stepLimit", "stepLimit", stepLimit)
+		return nil, fmt.Errorf("Invalid stepLimit")
+	}
+
+	timestamp, _ := params["timestamp"].(string)
+	if timestamp == "" || IsValidHexString(timestamp) == false {
+		b.Logger().Error("Invalid timestamp field", "timestamp", timestamp)
+		return nil, fmt.Errorf("Invalid timestamp")
+	}
+
+	amount, _ := params["value"].(string)
+	if amount == "" || ValidNumber(amount) == nil {
+		b.Logger().Error("Invalid amount for the 'value' field", "value", amount)
+		return nil, fmt.Errorf("Invalid amount for the 'value' field")
+	}
+
+	dataInput, _ := data.Get("data").(string)
 	if dataInput == "" {
 		dataInput = data.Get("input").(string)
 	}
@@ -241,61 +275,50 @@ func (b *backend) signTx(ctx context.Context, req *logical.Request, data *framew
 		dataInput = "0x" + dataInput
 	}
 	if serializeText != "" {
-		pp.Print("[INPUT] serializeText")
-		pp.Print(serializeText)
+		b.Logger().Info("[INPUT params] Serialize Text", "serializeText", serializeText)
 		txHash = SHA3Sum256([]byte(serializeText))
 	} else {
-		pp.Print("[INPUT] JSON")
-
 		fields, _ := transactionFields[3]
 		res, _ := SerializeMap(params, fields.inclusion, fields.exclusion)
-		//res = append([]byte("icx_sendTransaction."), res...)
 		res = append(transactionSaltBytes, res...)
-		//txHash = SHA3Sum256([]byte(BytesToString(res)))
 		txHash = SHA3Sum256(res)
-		pp.Print(BytesToString(res))
 		serializeText = BytesToString(res)
-		b.Logger().Info("Serialized text", "serialize", BytesToString(res))
+		b.Logger().Info("[INPUT JSON] Serialized Text", "serialize", BytesToString(res))
 	}
 
 	account, err := b.retrieveAccount(ctx, req, from)
-	fmt.Print("\nGet account \n")
-	pp.Print(account)
+
+	if account == nil {
+		b.Logger().Error("Could not find the corresponding key for the address", "address", from, "error", err)
+		return nil, fmt.Errorf("Failed to find the address - %s", from)
+	}
 
 	if err != nil {
 		b.Logger().Error("Failed to retrieve the signing account", "address", from, "error", err)
 		return nil, fmt.Errorf("Error retrieving signing account %s", from)
 	}
+	b.Logger().Info("[LOAD] Loaded account", "address", account.Address)
+
 	if account == nil {
 		return nil, fmt.Errorf("Signing account %s does not exist", from)
 	}
 
-	amount := ValidNumber(data.Get("value").(string))
-	if amount == nil {
-		b.Logger().Error("Invalid amount for the 'value' field", "value", data.Get("value").(string))
-		return nil, fmt.Errorf("Invalid amount for the 'value' field")
-	}
-
 	if err != nil {
-		b.Logger().Error("===>> Error reconstructing private key from retrieved hex", "error", err)
+		b.Logger().Error("Error reconstructing private key from retrieved hex", "error", err)
 		return nil, fmt.Errorf("Error reconstructing private key from retrieved hex")
 	}
 
-	//var nonce uint64
-	//nonce = nonceIn.Uint64()
 	//txHash = SHA3Sum256([]byte("icx_sendTransaction.fee.0x2386f26fc10000.from.hx57b8365292c115d3b72d948272cc4d788fa91f64.timestamp.1538976759263551.to.hx57b8365292c115d3b72d948272cc4d788fa91f64.value.0xde0b6b3a7640000"))
 	privateKey, _ := ParsePrivateKeyFromString(account.PrivateKey)
 	signedTx, err := NewSignature(txHash, privateKey)
-	pp.Printf("\n\n account.PrivateKey: %v \n", account.PrivateKey)
-	pp.Printf("\n\n signedTx: %v \n", signedTx.String())
+	//pp.Printf("\n\n account.PrivateKey: %v \n", account.PrivateKey)
+	//pp.Printf("\n\n signedTx: %v \n", signedTx.String())
 
-	//signature, _ := signedTx.SerializeRSV()
-	b64_sig, _ := signedTx.EncodeBase64()
-	//b64_sig, _ := signedTx.MarshalJSON()
+	b64Sig, _ := signedTx.EncodeBase64()
 
 	b.Logger().Info("Account Address", "address", account.Address)
 	b.Logger().Info("Signed Transaction", "signedTx", signedTx.String())
-	b.Logger().Info("Signed Transaction based encoded 64", "signedTx_b64", b64_sig)
+	b.Logger().Info("Signed Transaction based encoded 64", "signedTx_b64", b64Sig)
 
 	//publicKey := privateKey.PublicKey()
 	VerifySign := signedTx.Verify(txHash, privateKey.PublicKey())
@@ -307,13 +330,18 @@ func (b *backend) signTx(ctx context.Context, req *logical.Request, data *framew
 		return nil, err
 	}
 	params = data.Get("params").(map[string]interface{})
-	params["signature"] = b64_sig
+	params["signature"] = b64Sig
 	data.Raw["params"] = params
+
 	b.Logger().Info("Payload", "payload", pp.Sprintf(ToJsonString(data.Raw)))
+	b.Logger().Info("transaction_hash", "transaction_hash", hex.EncodeToString(txHash))
+	b.Logger().Info("signature", "signature", b64Sig)
+	b.Logger().Info("serializeText", "serializeText", serializeText)
+
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"transaction_hash": "0x" + hex.EncodeToString(txHash),
-			"signature":        b64_sig,
+			"signature":        b64Sig,
 			"serializeText":    serializeText,
 		},
 	}, nil

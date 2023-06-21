@@ -1,5 +1,5 @@
 VGO=go # Set to vgo if building in Go 1.10
-BUILD_VERSION = 0.1
+BUILD_VERSION = 0.2
 BINARY_NAME = icon
 OUTPUT_PATH = ./build
 DEVELOP_TMP_DIR = ./vault_temp
@@ -7,6 +7,7 @@ VAULT_VERSION = 1.11.2
 ARCH := $(shell arch)
 UNAME := $(shell uname)
 LOWER_UNAME := `echo $(UNAME) | tr A-Z a-z`
+DEPLOY_SERVER = 100.106.142.90
 
 GO_OS=$(shell go env GOOS)
 GO_ARCH=$(shell go env GOARCH)
@@ -100,10 +101,9 @@ build-%:
 
 
 shasum:
-	@find ${OUTPUT_PATH} -maxdepth 1  -name '$(BINARY_NAME)*' -exec $(SHASUM_CMD) {} \;
+	@find ${OUTPUT_PATH} -maxdepth 1  -name '$(BINARY_NAME)*' -exec ls -lT {}\; -exec $(SHASUM_CMD) {} \;
 
 shasum-%:
-#	@find . -maxdepth 1  -name '$(BINARY_NAME)*' -exec shasum -a 256 {} \;
 	@ \
 	export OUTPUT_FILE=`find $(OUTPUT_PATH) -maxdepth 1  -name '${patsubst shasum-%,%,$(@)}' -exec $(SHASUM_CMD) {} \;` ;\
 	echo "${BLUE}[BUILD] $${OUTPUT_FILE} ${RESET}" ;\
@@ -118,6 +118,16 @@ clean:
 		rm -rf ${DEVELOP_TMP_DIR}/plugin
 deps:
 		$(VGO) get
+
+#deploy_dev: build-linux-amd64 test
+
+deploy_dev: build-linux-amd64 test deploy_file
+
+deploy_file: shasum
+	scp build/icon_linux_amd64 root@$(DEPLOY_SERVER):/app/vault/vault_server/build/;
+	#ssh root@$(DEPLOY_SERVER) 'docker exec -it vault-local vault plugin deregister iconsign';
+
+
 
 docker_dev: build-linux-${ARCH} test
 	cd docker && docker-compose -f docker-compose-local.dev.yml up -d;

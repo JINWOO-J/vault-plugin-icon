@@ -134,6 +134,7 @@ func TestAccounts(t *testing.T) {
 			"to":        "hxc1d72af5b89ea6594a7e17ca7a804d52d2474462",
 			"stepLimit": "0x4a817c800",
 			"value":     "0x2386f26fc10000",
+			"timestamp": "0x185cf742ec0",
 		},
 	}
 	req.Data = data
@@ -232,18 +233,13 @@ func TestCreateAccountsOK(t *testing.T) {
 	assert.Equal("hxbe1833529dae2328156cc834223cdc462e4d129d", address4)
 }
 
-
-func createAccountFunc(t *testing.T, b logical.Backend, storage logical.Storage, name string) (logical.Storage, error)  {
-
-	//b, _ := getBackend(t)
-
+func createAccountFunc(t *testing.T, b logical.Backend, storage logical.Storage, name string) (logical.Storage, error) {
 	accountReq := logical.TestRequest(t, logical.UpdateOperation, "accounts")
 	data := map[string]interface{}{
 		"name": name,
 	}
 	accountReq.Data = data
 	accountReq.Storage = storage
-	//storage := accountReq.Storage
 	_, _ = b.HandleRequest(context.Background(), accountReq)
 	return storage, nil
 }
@@ -261,17 +257,17 @@ func TestListAccountsOK_1(t *testing.T) {
 	req.Data = data
 
 	for i := 0; i < maxWalletCount; i++ {
-		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d" , i))
+		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d", i))
 		if err != nil {
 			return
 		}
 	}
 	res, err := b.HandleRequest(context.Background(), req)
-	if err != nil{
+	if err != nil {
 		pp.Print(err)
 	}
-	pp.Print(res.Data["keys"])
-	assert.Equal(len(res.Data["keys"].([]string)), maxWalletCount )
+	pp.Print(res.Data)
+	assert.Equal(len(res.Data["keys"].([]string)), maxWalletCount)
 }
 
 func TestListAccountsDetailOK_1(t *testing.T) {
@@ -287,17 +283,18 @@ func TestListAccountsDetailOK_1(t *testing.T) {
 	req.Data = data
 
 	for i := 0; i < maxWalletCount; i++ {
-		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d" , i))
+		_, err := createAccountFunc(t, b, sm, fmt.Sprintf("test_wallet_%d", i))
 		if err != nil {
 			return
 		}
 	}
 	res, err := b.HandleRequest(context.Background(), req)
-	if err != nil{
+	if err != nil {
 		pp.Print(err)
 	}
-	pp.Print(res.Data["keys"])
-	assert.Equal( len(res.Data["keys"].([]map[string]interface{})), maxWalletCount )
+	pp.Print(res.Data["key_info"])
+	//assert.Equal( len(res.Data["keys"].([]map[string]interface{})), maxWalletCount )
+	assert.Equal(len(res.Data["key_info"].(map[string]interface{})), maxWalletCount)
 }
 
 func TestListAccountsFailure1(t *testing.T) {
@@ -345,9 +342,7 @@ func TestCreateAccountsFailure3(t *testing.T) {
 	b, _ := getBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "accounts")
 	data := map[string]interface{}{
-		// use N for the secp256k1 curve to trigger an error
 		"privateKey": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
-		//"privateKey": "0xec85999367d32fbbe02dd600a2a44550b95274cc67d14375a9f0bce233f13ad2",
 	}
 	req.Data = data
 	sm := newStorageMock()
@@ -362,7 +357,6 @@ func TestCreateAccountsFailureInvalidLength(t *testing.T) {
 	b, _ := getBackend(t)
 	req := logical.TestRequest(t, logical.UpdateOperation, "accounts")
 	data := map[string]interface{}{
-		// use N for the secp256k1 curve to trigger an error
 		"privateKey": "0xec85999367d32fbbe02dd600a2a44550b95274cc67d14375a9f0bce233f13ad2sdsdsdsdsds",
 	}
 	req.Data = data
@@ -404,20 +398,19 @@ func TestSignTransaction(t *testing.T) {
 	storage := req.Storage
 	res, _ := b.HandleRequest(context.Background(), req)
 	address := res.Data["address"].(string)
-	pp.Print(address)
 
 	req = logical.TestRequest(t, logical.CreateOperation, "accounts/"+address+"/sign")
 	req.Storage = storage
 
 	txData := map[string]interface{}{
-		//"serialize": "icx_sendTransaction.id.1234.jsonrpc.2\\.0.method.icx_sendTransaction.params.{from.hx1bb2825a74ebe30239e669330694b10ded650bbd.nid.0x53.nonce.0x64.stepLimit.0xf4240.timestamp.0x18281f8fe61.to.hxa067296997056e507ac2296573472f3c750d8b62.value.0x16345785d8a0000.version.0x3}",
 		"id":      2848,
 		"jsonrpc": "2.0",
 		"method":  "icx_sendTransaction",
 		"params": map[string]interface{}{
-			"from":      address,
-			"to":        "hxc1d72af5b89ea6594a7e17ca7a804d52d2474462",
+			"from":      "hxc000000000000000000333333333333333333333",
+			"to":        "cx0000000000000000000000000000000000000001",
 			"stepLimit": "0x4a817c800",
+			"timestamp": "0x185cf742ec0",
 			"value":     "0x2386f26fc10000",
 		},
 	}
@@ -427,8 +420,122 @@ func TestSignTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
+	expectedText := fmt.Sprintf("icx_sendTransaction.from.%s.stepLimit.0x4a817c800.timestamp.0x185cf742ec0.to.cx0000000000000000000000000000000000000001.value.0x2386f26fc10000", address)
 	pp.Print(resp)
+	assert.Equal(t, resp.Data["serializeText"].(string), expectedText)
+	assert.Equal(t, len(resp.Data["transaction_hash"].(string)), 66)
 }
+
+func TestSignTransactionFailure(t *testing.T) {
+	//assert := assert.New(t)
+	b, _ := getBackend(t)
+	req := logical.TestRequest(t, logical.UpdateOperation, "accounts")
+	data := map[string]interface{}{
+		"name": "SignAccount",
+	}
+	req.Data = data
+	storage := req.Storage
+	res, _ := b.HandleRequest(context.Background(), req)
+	address := res.Data["address"].(string)
+
+	txData := map[string]interface{}{
+		"id":      2848,
+		"jsonrpc": "2.0",
+		"method":  "icx_sendTransaction",
+		"params": map[string]interface{}{
+			"from":      "hxc000000000000000000333333333333333333333",
+			"to":        "hxc1d72af5b89ea6594a7e17ca7a804d52d2474462",
+			"stepLimit": "0x4a817c800",
+			"timestamp": "0x2386f26fc10000",
+			"value":     "0x2386f26fc10000",
+		},
+	}
+
+	invalidTestData := map[string]interface{}{
+		"invalid to": map[string]string{
+			"name":     "to",
+			"value":    "INVALID_ADDRESS",
+			"expected": "Invalid 'to address' value=INVALID_ADDRESS, len=15",
+		},
+		"invalid stepLimit - no hex": map[string]string{
+			"name":     "stepLimit",
+			"value":    "INVALID_STEPLIMIT",
+			"expected": "Invalid stepLimit",
+		},
+		"invalid stepLimit - empty value": map[string]string{
+			"name":     "stepLimit",
+			"value":    "",
+			"expected": "Invalid stepLimit",
+		},
+		"invalid timestamp - no hex": map[string]string{
+			"name":     "timestamp",
+			"value":    "ITS_NOT_TIMESTAMP",
+			"expected": "Invalid timestamp",
+		},
+		"invalid timestamp - empty value": map[string]string{
+			"name":     "timestamp",
+			"value":    "",
+			"expected": "Invalid timestamp",
+		},
+		"invalid value - empty value": map[string]string{
+			"name":     "value",
+			"value":    "",
+			"expected": "Invalid amount for the 'value' field",
+		},
+
+		"invalid value - invalid value": map[string]string{
+			"name":     "value",
+			"value":    "sss",
+			"expected": "Invalid amount for the 'value' field",
+		},
+
+		"invalid value - valid value": map[string]string{
+			"name":     "value",
+			"value":    "",
+			"expected": "Invalid amount for the 'value' field",
+		},
+	}
+
+	for k, element := range invalidTestData {
+		fmt.Printf("\nStart %v \n", k)
+		var reqSign = logical.TestRequest(t, logical.CreateOperation, "accounts/"+address+"/sign")
+		reqSign.Storage = storage
+		txDataModified := CopyMap(txData)
+		var name = element.(map[string]string)["name"]
+		var value = element.(map[string]string)["value"]
+		var expected = element.(map[string]string)["expected"]
+		txDataModified["params"].(map[string]interface{})[name] = value
+		//pp.Print(txDataModified)
+		reqSign.Data = txDataModified
+		_, err := b.HandleRequest(context.Background(), reqSign)
+		assert.Equal(t, err.Error(), expected)
+	}
+
+	//txData["params"].(map[string]interface{})["to"] = "INVALID_ADDRESS"
+	//req.Data = txData
+	//_, err := b.HandleRequest(context.Background(), req)
+	//assert.Equal(t, err.Error(), "Invalid 'to address' value=INVALID_ADDRESS, len=15")
+
+	//invalidTestData := []string{ "sdsd", "sdsds"}
+
+	//txData["params"].(map[string]interface{})["to"] = "INVALID_ADDRESS"
+	//req.Data = txData
+	//_, err := b.HandleRequest(context.Background(), req)
+	//assert.Equal(t, err.Error(), "Invalid 'to address' value=INVALID_ADDRESS, len=15")
+
+	//txData["params"].(map[string]interface{})["stepLimit"] = "sssss"
+	//req.Data = txData
+	//_, err = b.HandleRequest(context.Background(), req)
+	//assert.Equal(t, err.Error(), "Invalid stepLimit")
+
+}
+
+// sign with invalid parameter
+
+// sign with no address
+// sign with invalid timestamp
+// invalid from address
+// invalid to address
 
 func TestSignParamTransaction(t *testing.T) {
 	//assert := assert.New(t)

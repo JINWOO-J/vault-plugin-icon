@@ -94,7 +94,7 @@ func IsValidIconAddress(s string) bool {
 	if len(s) != 42 {
 		return false
 	}
-	if s[:2] != "hx" {
+	if s[:2] != "hx" && s[:2] != "cx" {
 		return false
 	}
 	s = s[2:]
@@ -177,4 +177,18 @@ func BytesToString(b []byte) string {
 func SHA3Sum256(m []byte) []byte {
 	d := sha3.Sum256(m)
 	return d[:]
+}
+
+func CopyMap(m map[string]interface{}) map[string]interface{} {
+	cp := make(map[string]interface{})
+	for k, v := range m {
+		vm, ok := v.(map[string]interface{})
+		if ok {
+			cp[k] = CopyMap(vm)
+		} else {
+			cp[k] = v
+		}
+	}
+
+	return cp
 }
